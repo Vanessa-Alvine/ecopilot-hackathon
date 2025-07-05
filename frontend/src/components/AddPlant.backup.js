@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { tavilyService } from '../services/tavilyService';
-import PlantRecognitionService from '../services/PlantRecognitionService';
 
 const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
   const [formData, setFormData] = useState({
@@ -18,17 +17,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
   const [recognitionLoading, setRecognitionLoading] = useState(false);
   const fileInputRef = useRef(null);
 
-  const [recognitionState, setRecognitionState] = useState({
-    isLoading: false,
-    results: null,
-    error: null,
-    hasScanned: false
-  });
-  const [previewUrl, setPreviewUrl] = useState(null); // This state isn't used in the provided code, but kept for consistency
-  const [dragOver, setDragOver] = useState(false); // This state isn't used in the provided code, but kept for consistency
-
-  const recognitionService = useRef(new PlantRecognitionService());
-
+  // Suggestions de plantes populaires (gardez l'existant)
   const popularPlants = {
     fr: [
       { name: 'Monstera Deliciosa', species: 'Monstera deliciosa', frequency: 7 },
@@ -71,30 +60,36 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
     ]
   };
 
+  // Gérer l'upload d'image RÉEL
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
+    // Vérifier le type de fichier
     if (!file.type.startsWith('image/')) {
       alert(language === 'fr' ? 'Veuillez sélectionner une image' : 'Please select an image file');
       return;
     }
 
+    // Vérifier la taille (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert(language === 'fr' ? 'Image trop grande (max 5MB)' : 'Image too large (max 5MB)');
       return;
     }
 
     try {
+      // Créer un aperçu local
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target.result);
       };
       reader.readAsDataURL(file);
 
+      // Stocker le fichier
       setFormData(prev => ({ ...prev, image: file }));
 
-      await recognizePlantAI(file); // Call the advanced AI recognition function
+      // Reconnaissance automatique de la plante
+      await recognizePlant(file);
 
     } catch (error) {
       console.error('Erreur upload image:', error);
@@ -102,125 +97,15 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
     }
   };
 
-  const analyzeImageLocally = (file) => {
-    return new Promise((resolve) => {
-      const fileName = file.name.toLowerCase();
-      
-      if (fileName.includes('monstera')) resolve('feuilles larges troués');
-      else if (fileName.includes('pothos')) resolve('feuilles en forme de coeur');
-      else if (fileName.includes('snake')) resolve('feuilles longues droites');
-      else if (fileName.includes('ficus')) resolve('feuilles brillantes ovales');
-      else resolve('plante verte feuilles'); // Générique
-    });
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    if (field === 'name' && value.length > 1) {
-      const filtered = popularPlants[language].filter(plant =>
-        plant.name.toLowerCase().includes(value.toLowerCase())
-      );
-      setSuggestions(filtered);
-      
-      if (value.length > 3) {
-        // You had a call to searchRealPlantSuggestions here, but the function isn't defined.
-        // Assuming it would be similar to loadDetailedPlantInfo or a direct Tavily search.
-        // For now, I'll remove the call to avoid errors, or you can implement it.
-        // searchRealPlantSuggestions(value); 
-      }
-    } else if (field === 'name' && value.length <= 1) {
-      setSuggestions([]);
-    }
-  };
-
-  // NEW: Advanced Plant Recognition with PlantRecognitionService
-  const recognizePlantAI = async (imageFile) => {
+  // Reconnaissance RÉELLE de plante via Tavily
+  const recognizePlant = async (imageFile) => {
     setRecognitionLoading(true);
-    setRecognitionState({
-      isLoading: true,
-      results: null,
-      error: null,
-      hasScanned: true
-    });
     
     try {
-      const results = await recognitionService.current.identifyPlant(imageFile, language);
-      
-      if (results.success) {
-        setRecognitionState({
-          isLoading: false,
-          results: results.plant,
-          error: null,
-          hasScanned: true
-        });
-        
-        setFormData(prev => ({
-          ...prev,
-          name: results.plant.name || prev.name,
-          species: results.plant.scientificName || prev.species,
-          wateringFrequency: extractWateringDays(results.plant.care?.watering) || prev.wateringFrequency
-        }));
-        
-        // Keeping the old format for compatibility with existing plantRecognition state usage
-        setPlantRecognition({
-          plantName: results.plant.name,
-          confidence: results.plant.metadata?.confidence || 0.8,
-          care: {
-            watering: {
-              details: results.plant.care?.watering?.frequency,
-              frequency: extractWateringDays(results.plant.care?.watering)
-            },
-            species: results.plant.scientificName
-          },
-          isFallback: false
-        });
-        
-      } else {
-        setRecognitionState({
-          isLoading: false,
-          results: null,
-          error: results.error,
-          hasScanned: true
-        });
-        
-        // Fallback to the existing Tavily method
-        await recognizePlantFallback(imageFile);
-      }
-      
-    } catch (error) {
-      console.error('Erreur reconnaissance avancée:', error);
-      
-      // Fallback to the existing Tavily method on error
-      await recognizePlantFallback(imageFile);
-      
-    } finally {
-      setRecognitionLoading(false);
-    }
-  };
-
-  // Utility function to extract watering days
-  const extractWateringDays = (wateringInfo) => {
-    if (!wateringInfo?.frequency) return null;
-    
-    const frequency = wateringInfo.frequency.toLowerCase();
-    const weeklyMatch = frequency.match(/(\d+).*(?:fois|times).*(?:semaine|week)/);
-    const dailyMatch = frequency.match(/(\d+).*(?:jours?|days?)/);
-    
-    if (weeklyMatch) {
-      return Math.round(7 / parseInt(weeklyMatch[1]));
-    } else if (dailyMatch) {
-      return parseInt(dailyMatch[1]);
-    }
-    
-    return null;
-  };
-
-  // Renamed from original `recognizePlant` to `recognizePlantFallback`
-  const recognizePlantFallback = async (imageFile) => {
-    setRecognitionLoading(true); // Ensure loading state is true for fallback
-    try {
+      // Convertir l'image en texte descriptif (simple pour le prototype)
       const imageDescription = await analyzeImageLocally(imageFile);
+      
+      // Rechercher via Tavily avec la description
       const searchQuery = language === 'fr' 
         ? `identifier plante ${imageDescription} espèce nom commun`
         : `identify plant ${imageDescription} species common name`;
@@ -230,6 +115,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
       if (recognition && !recognition.isFallback) {
         setPlantRecognition(recognition);
         
+        // Auto-remplir le formulaire si confiance élevée
         if (recognition.confidence > 0.7) {
           const suggestedName = recognition.plantName || recognition.care?.plantType;
           const suggestedSpecies = recognition.care?.species || '';
@@ -242,28 +128,71 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
             wateringFrequency: suggestedFrequency
           }));
         }
-      } else {
-        // If Tavily also fails or returns fallback, set an error for the user
-        setRecognitionState(prev => ({
-          ...prev,
-          isLoading: false,
-          error: language === 'fr' ? 'Impossible de reconnaître la plante avec les informations disponibles.' : 'Could not recognize the plant with available information.',
-          hasScanned: true
-        }));
       }
+      
     } catch (error) {
-      console.error('Erreur fallback Tavily:', error);
-      setRecognitionState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: language === 'fr' ? 'Erreur lors de la reconnaissance (Tavily).' : 'Error during recognition (Tavily).',
-        hasScanned: true
-      }));
+      console.error('Erreur reconnaissance:', error);
     } finally {
       setRecognitionLoading(false);
     }
   };
 
+  // Analyse locale basique de l'image (fallback)
+  const analyzeImageLocally = (file) => {
+    return new Promise((resolve) => {
+      // Analyse basique basée sur le nom de fichier et métadonnées
+      const fileName = file.name.toLowerCase();
+      
+      if (fileName.includes('monstera')) resolve('feuilles larges troués');
+      else if (fileName.includes('pothos')) resolve('feuilles en forme de coeur');
+      else if (fileName.includes('snake')) resolve('feuilles longues droites');
+      else if (fileName.includes('ficus')) resolve('feuilles brillantes ovales');
+      else resolve('plante verte feuilles'); // Générique
+    });
+  };
+
+  // Gérer les changements de formulaire (gardez l'existant et ajoutez)
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Auto-suggestions pour les noms de plantes
+    if (field === 'name' && value.length > 1) {
+      const filtered = popularPlants[language].filter(plant =>
+        plant.name.toLowerCase().includes(value.toLowerCase())
+      );
+      setSuggestions(filtered);
+      
+      // Recherche RÉELLE via Tavily pour suggestions avancées
+      if (value.length > 3) {
+        searchRealPlantSuggestions(value);
+      }
+    } else if (field === 'name' && value.length <= 1) {
+      setSuggestions([]);
+    }
+  };
+
+  // Recherche RÉELLE de suggestions via Tavily
+  const searchRealPlantSuggestions = async (query) => {
+    try {
+      const searchResults = await tavilyService.searchPlantInfo(query, language);
+      if (searchResults && searchResults.care) {
+        // Ajouter aux suggestions existantes
+        const realSuggestion = {
+          name: searchResults.plantName,
+          species: searchResults.care.species || query,
+          frequency: parseInt(searchResults.care.watering?.frequency) || 7,
+          isFromTavily: true,
+          confidence: searchResults.confidence
+        };
+        
+        setSuggestions(prev => [realSuggestion, ...prev.slice(0, 4)]);
+      }
+    } catch (error) {
+      console.error('Erreur suggestions Tavily:', error);
+    }
+  };
+
+  // Sélectionner une suggestion (améliorée)
   const selectSuggestion = (plant) => {
     setFormData(prev => ({
       ...prev,
@@ -273,11 +202,13 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
     }));
     setSuggestions([]);
     
+    // Si c'est une suggestion Tavily, charger plus d'infos
     if (plant.isFromTavily) {
       loadDetailedPlantInfo(plant.name);
     }
   };
 
+  // Charger infos détaillées via Tavily
   const loadDetailedPlantInfo = async (plantName) => {
     try {
       const details = await tavilyService.searchPlantInfo(plantName, language);
@@ -289,21 +220,17 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
     }
   };
 
+  // Supprimer l'image
   const removeImage = () => {
     setImagePreview(null);
     setPlantRecognition(null);
-    setRecognitionState({
-      isLoading: false,
-      results: null,
-      error: null,
-      hasScanned: false
-    });
     setFormData(prev => ({ ...prev, image: null }));
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  // Valider le formulaire (gardez l'existant)
   const validateForm = () => {
     if (!formData.name.trim()) {
       alert(language === 'fr' ? 'Le nom de la plante est requis' : 'Plant name is required');
@@ -316,6 +243,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
     return true;
   };
 
+  // Soumettre le formulaire (amélioré avec image)
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -324,6 +252,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
     setLoading(true);
     
     try {
+      // Convertir l'image en base64 si présente
       let imageData = null;
       if (formData.image) {
         imageData = await new Promise((resolve) => {
@@ -335,14 +264,15 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
 
       await onAddPlant({
         ...formData,
-        image: imageData,
-        plantRecognition: plantRecognition,
+        image: imageData, // Base64 de l'image
+        plantRecognition: plantRecognition, // Infos Tavily
         nameFr: language === 'en' ? '' : formData.name,
         nameEn: language === 'fr' ? '' : formData.name,
         locationFr: language === 'en' ? '' : formData.location,
         locationEn: language === 'fr' ? '' : formData.location
       });
       
+      // Réinitialiser le formulaire
       setFormData({
         name: '',
         species: '',
@@ -353,13 +283,8 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
       });
       setImagePreview(null);
       setPlantRecognition(null);
-      setRecognitionState({
-        isLoading: false,
-        results: null,
-        error: null,
-        hasScanned: false
-      });
       
+      // Retourner à l'accueil
       setTimeout(() => {
         onBack();
       }, 1000);
@@ -374,6 +299,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
 
   return (
     <div className="add-plant-container">
+      {/* Header */}
       <div className="page-header">
         <button className="btn-back" onClick={onBack}>
           <span>←</span>
@@ -384,7 +310,10 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
         </h2>
       </div>
 
+      {/* Formulaire */}
       <form onSubmit={handleSubmit} className="add-plant-form">
+        
+        {/* NOUVEAU : Section photo de la plante */}
         <div className="form-group">
           <label className="form-label">
             📷 {language === 'fr' ? 'Photo de la plante (optionnel)' : 'Plant photo (optional)'}
@@ -415,6 +344,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
             style={{ display: 'none' }}
           />
           
+          {/* Reconnaissance en cours */}
           {recognitionLoading && (
             <div className="recognition-loading">
               <span className="loading-spinner small"></span>
@@ -422,41 +352,8 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
             </div>
           )}
           
-          {/* Display results from the advanced AI recognition service first */}
-          {recognitionState.results && (
-            <div className="ai-care-advice">
-              <h4>🤖 {language === 'fr' ? 'Conseils IA avancés' : 'Advanced AI Advice'}</h4>
-              
-              <div className="care-grid">
-                <div className="care-item">
-                  <span className="care-icon">💧</span>
-                  <div>
-                    <strong>{language === 'fr' ? 'Arrosage' : 'Watering'}</strong>
-                    <p>{recognitionState.results.care?.watering?.frequency}</p>
-                  </div>
-                </div>
-                
-                <div className="care-item">
-                  <span className="care-icon">☀️</span>
-                  <div>
-                    <strong>{language === 'fr' ? 'Lumière' : 'Light'}</strong>
-                    <p>{recognitionState.results.care?.light?.level}</p>
-                  </div>
-                </div>
-              </div>
-              
-              {recognitionState.results.canadianCare && (
-                <div className="canadian-tips">
-                  <h5>🍁 {language === 'fr' ? 'Conseils pour le Canada' : 'Tips for Canada'}</h5>
-                  <p>{recognitionState.results.canadianCare.politeReminder}</p>
-                  <p><strong>Zones:</strong> {recognitionState.results.canadianCare.zones}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Display general plant recognition (e.g., from Tavily fallback) if advanced AI didn't provide specific results or if it was a fallback */}
-          {plantRecognition && !plantRecognition.isFallback && !recognitionState.results && (
+          {/* Résultats de reconnaissance */}
+          {plantRecognition && !plantRecognition.isFallback && (
             <div className="recognition-results">
               <h4>🔍 {language === 'fr' ? 'Plante reconnue' : 'Plant recognized'}</h4>
               <p><strong>{plantRecognition.plantName}</strong></p>
@@ -468,15 +365,9 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
               </small>
             </div>
           )}
-
-          {recognitionState.error && (
-            <div className="recognition-error">
-              <span>⚠️</span>
-              <span>{recognitionState.error}</span>
-            </div>
-          )}
         </div>
 
+        {/* Nom de la plante (gardez l'existant) */}
         <div className="form-group">
           <label className="form-label">
             {language === 'fr' ? 'Nom de la plante *' : 'Plant name *'}
@@ -490,6 +381,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
             required
           />
           
+          {/* Suggestions améliorées */}
           {suggestions.length > 0 && (
             <div className="suggestions-dropdown">
               {suggestions.map((plant, index) => (
@@ -512,6 +404,8 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
           )}
         </div>
 
+        {/* Gardez le reste du formulaire existant (espèce, emplacement, fréquence, notes) */}
+        {/* Espèce */}
         <div className="form-group">
           <label className="form-label">
             {language === 'fr' ? 'Espèce (optionnel)' : 'Species (optional)'}
@@ -525,6 +419,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
           />
         </div>
 
+        {/* Emplacement */}
         <div className="form-group">
           <label className="form-label">
             {language === 'fr' ? 'Emplacement dans la maison *' : 'Location in house *'}
@@ -546,6 +441,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
           </select>
         </div>
 
+        {/* Fréquence d'arrosage */}
         <div className="form-group">
           <label className="form-label">
             {language === 'fr' ? 'Fréquence d\'arrosage' : 'Watering frequency'}
@@ -578,6 +474,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
           </div>
         </div>
 
+        {/* Notes */}
         <div className="form-group">
           <label className="form-label">
             {language === 'fr' ? 'Notes personnelles (optionnel)' : 'Personal notes (optional)'}
@@ -594,6 +491,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
           />
         </div>
 
+        {/* Boutons */}
         <div className="form-actions">
           <button
             type="button"
@@ -623,6 +521,7 @@ const AddPlant = ({ onAddPlant, language, texts, onBack }) => {
         </div>
       </form>
 
+      {/* Suggestions rapides (gardez l'existant) */}
       <div className="quick-suggestions">
         <h3 className="suggestions-title">
           {language === 'fr' ? 'Plantes populaires' : 'Popular plants'}

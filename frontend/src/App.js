@@ -82,21 +82,38 @@ function App() {
     }
   }, [location, plants]);
 
+  // Écouter les changements de hash pour navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.slice(1); // Enlever le #
+      if (hash === 'add') {
+        setCurrentView('add');
+      } else if (hash === 'home' || hash === '') {
+        setCurrentView('home');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Vérifier le hash initial
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
   // Initialiser l'application
   const initializeApp = async () => {
     try {
       setLoading(true);
-      
+
       // Charger les plantes
       const plantsData = await plantsService.getPlants(language);
       setPlants(plantsData);
-      
+
       // Obtenir la localisation
       getCurrentLocation();
-      
+
       // Demander permission pour les notifications
       requestNotificationPermission();
-      
+
     } catch (error) {
       console.error('Erreur initialisation:', error);
     } finally {
@@ -114,12 +131,12 @@ function App() {
             longitude: position.coords.longitude
           };
           setLocation(coords);
-          
+
           // Charger la météo
           try {
             const weatherData = await weatherService.getCurrentWeather(
-              coords.latitude, 
-              coords.longitude, 
+              coords.latitude,
+              coords.longitude,
               language
             );
             setWeather(weatherData);
@@ -150,15 +167,19 @@ function App() {
   // Vérifier les rappels basés sur la localisation
   const checkLocationBasedReminders = () => {
     if (!location) return;
-    
+
     // Simuler une "zone maison" (rayon de 100m autour de la position actuelle)
-    const homeRadius = 0.001; // Approximativement 100m en degrés
-    
+    // NOTE: For a real app, you'd need more sophisticated geo-fencing.
+    // This is a placeholder to demonstrate the concept.
+    const homeRadius = 0.001; // Roughly 100m in degrees for simplification
+
     plants.forEach(plant => {
+      // This is a simplified check. In a real app, you'd check actual coordinates
+      // and potentially if the user is *entering* or *leaving* a zone.
+      // For now, it triggers if a plant needs water and we have a location.
       if (plant.needsWater) {
-        // Si près de la maison, envoyer notification
         showNotification(
-          language === 'fr' 
+          language === 'fr'
             ? `🌱 ${plant.name} a besoin d'eau !`
             : `🌱 ${plant.name} needs water!`,
           language === 'fr'
@@ -178,7 +199,7 @@ function App() {
         badge: '/favicon.ico'
       });
     }
-    
+
     // Ajouter à la liste des notifications in-app
     const newNotification = {
       id: Date.now(),
@@ -187,7 +208,7 @@ function App() {
       timestamp: new Date(),
       read: false
     };
-    
+
     setNotifications(prev => [newNotification, ...prev.slice(0, 9)]); // Garder max 10
   };
 
@@ -198,27 +219,27 @@ function App() {
         ...plantData,
         lang: language
       });
-      
+
       setPlants(prev => [...prev, newPlant]);
-      
+
       // Rechercher des infos avec Tavily
       if (plantData.species) {
         try {
           const plantInfo = await tavilyService.searchPlantInfo(plantData.species, language);
-          // Mettre à jour la plante avec les infos Tavily
+          // Mettre à jour la plante avec les infos Tavily si nécessaire, ou afficher
           console.log('Infos Tavily:', plantInfo);
         } catch (error) {
           console.error('Erreur Tavily:', error);
         }
       }
-      
+
       showNotification(
         language === 'fr' ? '🌿 Nouvelle plante ajoutée !' : '🌿 New plant added!',
-        language === 'fr' 
+        language === 'fr'
           ? `${plantData.name} a été ajoutée à votre collection.`
           : `${plantData.name} has been added to your collection.`
       );
-      
+
     } catch (error) {
       console.error('Erreur ajout plante:', error);
     }
@@ -228,19 +249,19 @@ function App() {
   const waterPlant = async (plantId) => {
     try {
       await plantsService.waterPlant(plantId, language);
-      
+
       // Mettre à jour localement
-      setPlants(prev => prev.map(plant => 
-        plant.id === plantId 
+      setPlants(prev => prev.map(plant =>
+        plant.id === plantId
           ? { ...plant, needsWater: false, lastWatered: new Date().toISOString() }
           : plant
       ));
-      
+
       showNotification(
         language === 'fr' ? '💧 Plante arrosée !' : '💧 Plant watered!',
         language === 'fr' ? 'Votre plante vous remercie !' : 'Your plant thanks you!'
       );
-      
+
     } catch (error) {
       console.error('Erreur arrosage:', error);
     }
@@ -250,10 +271,10 @@ function App() {
   const toggleLanguage = () => {
     const newLang = language === 'fr' ? 'en' : 'fr';
     setLanguage(newLang);
-    
+
     // Recharger les données dans la nouvelle langue
     plantsService.getPlants(newLang).then(setPlants);
-    
+
     if (location) {
       weatherService.getCurrentWeather(location.latitude, location.longitude, newLang)
         .then(setWeather)
@@ -267,7 +288,7 @@ function App() {
       ...prev,
       ...newSettings
     }));
-    
+
     // Si la langue a changé, mettre à jour l'app
     if (newSettings.language && newSettings.language !== language) {
       setLanguage(newSettings.language);
@@ -292,7 +313,7 @@ function App() {
   return (
     <div className="App" data-language={language}>
       {/* Header avec navigation */}
-      <Header 
+      <Header
         language={language}
         onLanguageToggle={toggleLanguage}
         notifications={notifications}
@@ -306,24 +327,24 @@ function App() {
         {currentView === 'home' && (
           <>
             {/* Widget météo */}
-            <WeatherWidget 
+            <WeatherWidget
               weather={weather}
               location={location}
               language={language}
               texts={t}
             />
-            
+
             {/* Tracker de localisation */}
-            <LocationTracker 
+            <LocationTracker
               location={location}
               plants={plants}
               language={language}
               onWaterPlant={waterPlant}
               texts={t}
             />
-            
+
             {/* Liste des plantes */}
-            <PlantList 
+            <PlantList
               plants={plants}
               language={language}
               onWaterPlant={waterPlant}
@@ -331,9 +352,9 @@ function App() {
             />
           </>
         )}
-        
+
         {currentView === 'add' && (
-          <AddPlant 
+          <AddPlant
             onAddPlant={addPlant}
             language={language}
             texts={t}
@@ -361,6 +382,17 @@ function App() {
           <span className="stats-text">{t.stats}</span>
         </div>
       </footer>
+
+      {/* AJOUTER ce bouton FAB pour toujours avoir accès à l'ajout */}
+      {currentView === 'home' && (
+        <button
+          className="btn-fab"
+          onClick={() => setCurrentView('add')}
+          title={t.addPlant}
+        >
+          ➕
+        </button>
+      )}
     </div>
   );
 }

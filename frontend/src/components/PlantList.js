@@ -14,10 +14,10 @@ const PlantList = ({ plants, language, onWaterPlant, texts }) => {
             : 'Add your first plant to start your indoor garden!'
           }
         </p>
-        <button 
-          className="btn btn-primary"
-          onClick={() => window.dispatchEvent(new CustomEvent('showAddPlant'))}
-        >
+          <button 
+            className="btn btn-primary"
+            onClick={() => window.location.hash = 'add'}
+     >
           <span>➕</span>
           {texts.addPlant}
         </button>
