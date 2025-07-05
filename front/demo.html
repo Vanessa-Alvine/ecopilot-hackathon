@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoPilot - Démo Hackathon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 50%, #f7f3f0 100%);
+            min-height: 100vh;
+            color: #1a1a1a;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            min-height: 100vh;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .tagline {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .language-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .main-content {
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #22c55e;
+        }
+
+        .weather-card {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .weather-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .weather-temp {
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+
+        .weather-details {
+            text-align: right;
+        }
+
+        .plant-card {
+            border-left-color: #a0522d;
+            background: linear-gradient(90deg, #f7f3f0, #ffffff);
+        }
+
+        .plant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .plant-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #15803d;
+        }
+
+        .plant-species {
+            font-size: 0.85rem;
+            color: #a0522d;
+            font-style: italic;
+        }
+
+        .status-water {
+            background: #f7f3f0;
+            color: #a0522d;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .plant-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-water {
+            background: #a0522d;
+            color: white;
+        }
+
+        .btn-water:hover {
+            background: #8b4513;
+            transform: translateY(-1px);
+        }
+
+        .btn-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #22c55e;
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .location-card {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border-left-color: #22c55e;
+        }
+
+        .notification {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .footer {
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #a0522d;
+        }
+
+        .demo-badge {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: #ef4444;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 1000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .urgent {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-badge">🚀 DÉMO HACKATHON</div>
+    
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <button class="language-toggle" onclick="toggleLanguage()">🇫🇷 FR</button>
+            <div class="logo">🌱 EcoPilot</div>
+            <div class="tagline" id="tagline">Réalisez votre main verte</div>
+        </div>
+
+        <!-- Contenu principal -->
+        <div class="main-content">
+            <!-- Widget météo -->
+            <div class="card weather-card">
+                <div class="card-title">
+                    <span>🌤️</span>
+                    <span id="weather-title">Météo</span>
+                </div>
+                <div class="weather-content">
+                    <div class="weather-temp">23°C</div>
+                    <div class="weather-details">
+                        <div>📍 Ottawa, CA</div>
+                        <div id="weather-desc">Partiellement nuageux</div>
+                        <div>💧 Humidité: 65%</div>
+                        <div>💨 Vent: 12 km/h</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 8px; font-size: 0.85rem;">
+                    <span id="weather-advice">✅ Conditions parfaites pour vos plantes !</span>
+                </div>
+            </div>
+
+            <!-- Géolocalisation -->
+            <div class="card location-card">
+                <div class="card-title">
+                    <span>📍</span>
+                    <span id="location-title">Assistant Géolocalisé</span>
+                </div>
+                <div class="notification">
+                    <strong>🏠 <span id="location-status">Vous êtes à la maison !</span></strong><br>
+                    <span id="location-suggestion">Parfait ! 1 plante a besoin d'eau.</span>
+                </div>
+            </div>
+
+            <!-- Plante ayant besoin d'eau -->
+            <div class="card plant-card urgent">
+                <div class="card-title">
+                    <span>💧</span>
+                    <span id="thirsty-title">Plantes assoiffées</span>
+                </div>
+                
+                <div class="plant-header">
+                    <div>
+                        <div class="plant-name">Monstera Deliciosa</div>
+                        <div class="plant-species">Monstera deliciosa</div>
+                    </div>
+                    <div class="status-water" id="thirsty-status">Soif</div>
+                </div>
+
+                <div class="plant-info">
+                    <div>
+                        <strong>📍 <span id="location-label">Lieu</span>:</strong><br>
+                        <span id="plant-location">Salon près de la fenêtre</span>
+                    </div>
+                    <div>
+                        <strong>💧 <span id="last-watered-label">Dernier arrosage</span>:</strong><br>
+                        <span id="last-watered">Il y a 8 jours</span>
+                    </div>
+                    <div>
+                        <strong>⏰ <span id="frequency-label">Fréquence</span>:</strong><br>
+                        <span id="frequency">Tous les 7 jours</span>
+                    </div>
+                    <div>
+                        <strong>📅 <span id="next-watering-label">Prochain arrosage</span>:</strong><br>
+                        <span id="next-watering">En retard de 1 jour</span>
+                    </div>
+                </div>
+
+                <div style="background: #f0fdf4; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong>💡 <span id="tip-label">Conseil Tavily</span>:</strong>
+                    <p id="plant-tip">Aime la lumière indirecte et l'humidité élevée. Essuyer les feuilles régulièrement.</p>
+                </div>
+
+                <button class="btn btn-water" onclick="waterPlant()">
+                    <span>💧</span>
+                    <span id="water-btn">Arroser maintenant</span>
+                </button>
+            </div>
+
+            <!-- Plante en bonne santé -->
+            <div class="card">
+                <div class="card-title">
+                    <span>🌿</span>
+                    <span id="happy-title">Plantes heureuses</span>
+                </div>
+                
+                <div class="plant-header">
+                    <div>
+                        <div class="plant-name">Pothos Doré</div>
+                        <div class="plant-species">Epipremnum aureum</div>
+                    </div>
+                    <div style="background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 15px; font-size: 0.75rem; font-weight: 600;">
+                        <span id="good-status">Bien</span>
+                    </div>
+                </div>
+
+                <div class="plant-info">
+                    <div>
+                        <strong>📍 <span id="location-label2">Lieu</span>:</strong><br>
+                        <span id="plant-location2">Cuisine</span>
+                    </div>
+                    <div>
+                        <strong>💧 <span id="last-watered-label2">Dernier arrosage</span>:</strong><br>
+                        <span id="last-watered2">Il y a 3 jours</span>
+                    </div>
+                    <div>
+                        <strong>⏰ <span id="frequency-label2">Fréquence</span>:</strong><br>
+                        <span id="frequency2">Tous les 10 jours</span>
+                    </div>
+                    <div>
+                        <strong>📅 <span id="next-watering-label2">Prochain arrosage</span>:</strong><br>
+                        <span id="next-watering2">Dans 7 jours</span>
+                    </div>
+                </div>
+
+                <div style="background: #f0fdf4; padding: 10px; border-radius: 8px;">
+                    <strong>💡 <span id="tip-label2">Conseil Tavily</span>:</strong>
+                    <p id="plant-tip2">Très résistant, parfait pour débuter. Se propage facilement dans l'eau.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <span>📊</span>
+            <span id="stats">Plus de 2 Canadiens sur 3 possèdent au moins une plante</span>
+        </div>
+
+        <!-- Bouton flottant -->
+        <button class="btn-fab" onclick="addPlant()">➕</button>
+    </div>
+
+    <script>
+        let currentLang = 'fr';
+        
+        const texts = {
+            fr: {
+                tagline: 'Réalisez votre main verte',
+                weatherTitle: 'Météo',
+                weatherDesc: 'Partiellement nuageux',
+                weatherAdvice: '✅ Conditions parfaites pour vos plantes !',
+                locationTitle: 'Assistant Géolocalisé',
+                locationStatus: 'Vous êtes à la maison !',
+                locationSuggestion: 'Parfait ! 1 plante a besoin d\'eau.',
+                thirstyTitle: 'Plantes assoiffées',
+                happyTitle: 'Plantes heureuses',
+                thirstyStatus: 'Soif',
+                goodStatus: 'Bien',
+                locationLabel: 'Lieu',
+                lastWateredLabel: 'Dernier arrosage',
+                frequencyLabel: 'Fréquence',
+                nextWateringLabel: 'Prochain arrosage',
+                tipLabel: 'Conseil Tavily',
+                waterBtn: 'Arroser maintenant',
+                plantLocation: 'Salon près de la fenêtre',
+                plantLocation2: 'Cuisine',
+                lastWatered: 'Il y a 8 jours',
+                lastWatered2: 'Il y a 3 jours',
+                frequency: 'Tous les 7 jours',
+                frequency2: 'Tous les 10 jours',
+                nextWatering: 'En retard de 1 jour',
+                nextWatering2: 'Dans 7 jours',
+                plantTip: 'Aime la lumière indirecte et l\'humidité élevée. Essuyer les feuilles régulièrement.',
+                plantTip2: 'Très résistant, parfait pour débuter. Se propage facilement dans l\'eau.',
+                stats: 'Plus de 2 Canadiens sur 3 possèdent au moins une plante'
+            },
+            en: {
+                tagline: 'Discover your green thumb',
+                weatherTitle: 'Weather',
+                weatherDesc: 'Partially cloudy',
+                weatherAdvice: '✅ Perfect conditions for your plants!',
+                locationTitle: 'Location Assistant',
+                locationStatus: 'You\'re home!',
+                locationSuggestion: 'Perfect! 1 plant needs water.',
+                thirstyTitle: 'Thirsty plants',
+                happyTitle: 'Happy plants',
+                thirstyStatus: 'Thirsty',
+                goodStatus: 'Good',
+                locationLabel: 'Location',
+                lastWateredLabel: 'Last watered',
+                frequencyLabel: 'Frequency',
+                nextWateringLabel: 'Next watering',
+                tipLabel: 'Tavily Tip',
+                waterBtn: 'Water now',
+                plantLocation: 'Living room near window',
+                plantLocation2: 'Kitchen',
+                lastWatered: '8 days ago',
+                lastWatered2: '3 days ago',
+                frequency: 'Every 7 days',
+                frequency2: 'Every 10 days',
+                nextWatering: '1 day overdue',
+                nextWatering2: 'In 7 days',
+                plantTip: 'Loves indirect light and high humidity. Wipe leaves regularly.',
+                plantTip2: 'Very resilient, perfect for beginners. Propagates easily in water.',
+                stats: 'Over 2 out of 3 Canadians own at least one houseplant'
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'fr' ? 'en' : 'fr';
+            const langBtn = document.querySelector('.language-toggle');
+            langBtn.textContent = currentLang === 'fr' ? '🇫🇷 FR' : '🇨🇦 EN';
+            
+            // Mettre à jour tous les textes
+            Object.keys(texts[currentLang]).forEach(key => {
+                const element = document.getElementById(key.replace(/([A-Z])/g, '-$1').toLowerCase());
+                if (element) {
+                    element.textContent = texts[currentLang][key];
+                }
+            });
+        }
+
+        function waterPlant() {
+            alert(currentLang === 'fr' 
+                ? '🌱 Plante arrosée avec succès ! Merci de prendre soin de vos plantes.' 
+                : '🌱 Plant watered successfully! Thank you for taking care of your plants.'
+            );
+        }
+
+        function addPlant() {
+            alert(currentLang === 'fr' 
+                ? '🌿 Fonctionnalité disponible dans l\'app complète après installation de Node.js !' 
+                : '🌿 Feature available in the full app after Node.js installation!'
+            );
+        }
+
+        // Simuler des notifications géolocalisées
+        setTimeout(() => {
+            if ('Notification' in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification('🌱 EcoPilot', {
+                            body: currentLang === 'fr' 
+                                ? 'Vous êtes proche de chez vous ! Monstera a besoin d\'eau.'
+                                : 'You\'re near home! Monstera needs water.',
+                            icon: '/favicon.ico'
+                        });
+                    }
+                });
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
