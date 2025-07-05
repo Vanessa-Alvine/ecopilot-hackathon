@@ -184,7 +184,7 @@ Vanessa-Alvine - Développeuse full-stack passionnée par l'IA et la durabilité
 
 🌱 Transformons la façon dont nous prenons soin de nos plantes avec l'IA !
 🌱 Transforming plant care with AI intelligence!
-📞 Contact
+
 
 GitHub : @Vanessa-Alvine
 Hackathon : AI Tinkerers Ottawa Summer Vibe Hackathon 2025

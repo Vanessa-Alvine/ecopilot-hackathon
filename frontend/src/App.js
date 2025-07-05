@@ -7,6 +7,7 @@ import PlantList from './components/PlantList';
 import AddPlant from './components/AddPlant';
 import WeatherWidget from './components/WeatherWidget';
 import LocationTracker from './components/LocationTracker';
+import SettingsPage from './components/SettingsPage';
 
 // Services
 import { plantsService } from './services/plantsService';
@@ -58,6 +59,13 @@ function App() {
   const [currentView, setCurrentView] = useState('home');
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
+  const [userSettings, setUserSettings] = useState({
+    notifications: true,
+    waterReminders: true,
+    locationTracking: true,
+    language: 'fr',
+    theme: 'light'
+  });
 
   // Textes selon la langue
   const t = texts[language];
@@ -253,6 +261,24 @@ function App() {
     }
   };
 
+  // Mettre à jour les paramètres
+  const updateSettings = (newSettings) => {
+    setUserSettings(prev => ({
+      ...prev,
+      ...newSettings
+    }));
+    
+    // Si la langue a changé, mettre à jour l'app
+    if (newSettings.language && newSettings.language !== language) {
+      setLanguage(newSettings.language);
+    }
+  };
+
+  // Navigation
+  const navigateTo = (view) => {
+    setCurrentView(view);
+  };
+
   // Rendu de l'interface
   if (loading) {
     return (
@@ -312,6 +338,18 @@ function App() {
             language={language}
             texts={t}
             onBack={() => setCurrentView('home')}
+          />
+        )}
+
+        {currentView === 'settings' && (
+          <SettingsPage
+            settings={userSettings}
+            onUpdateSettings={updateSettings}
+            onNavigate={navigateTo}
+            language={language}
+            texts={t}
+            location={location}
+            onGetLocation={getCurrentLocation}
           />
         )}
       </main>
